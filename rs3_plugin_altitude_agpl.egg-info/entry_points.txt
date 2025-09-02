@@ -1,2 +1,0 @@
-[rs3.plugins]
-rs3_plugin_altitude_agpl = rs3_plugin_altitude_agpl.plugin:AltitudePlugin
