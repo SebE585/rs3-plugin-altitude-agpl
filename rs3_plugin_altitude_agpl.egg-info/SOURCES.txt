@@ -1,0 +1,8 @@
+pyproject.toml
+rs3_plugin_altitude_agpl/plugin.py
+rs3_plugin_altitude_agpl.egg-info/PKG-INFO
+rs3_plugin_altitude_agpl.egg-info/SOURCES.txt
+rs3_plugin_altitude_agpl.egg-info/dependency_links.txt
+rs3_plugin_altitude_agpl.egg-info/entry_points.txt
+rs3_plugin_altitude_agpl.egg-info/requires.txt
+rs3_plugin_altitude_agpl.egg-info/top_level.txt

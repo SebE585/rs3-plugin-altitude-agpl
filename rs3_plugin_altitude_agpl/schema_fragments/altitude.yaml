@@ -1,0 +1,7 @@
+# ajoute la colonne canonique v1.0 si absente
+columns:
+  - name: altitude_m
+    dtype: float32
+    unit: m
+    nullable: true
+    description: "Orthometric altitude (SRTM/IGN)."

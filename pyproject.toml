@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rs3-plugin-altitude-agpl"
+version = "0.1.0"
+description = "RS3 Altitude enricher (AGPL)"
+license = { text = "AGPL-3.0-or-later" }
+dependencies = ["pandas", "pyyaml", "requests"]
+
+[project.entry-points."rs3.plugins"]
+rs3_plugin_altitude_agpl = "rs3_plugin_altitude_agpl.plugin:AltitudePlugin"
+
+[tool.setuptools.packages.find]
+include = ["rs3_plugin_altitude_agpl"]

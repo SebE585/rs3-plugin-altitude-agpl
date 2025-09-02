@@ -1,0 +1,8 @@
+Metadata-Version: 2.4
+Name: rs3-plugin-altitude-agpl
+Version: 0.1.0
+Summary: RS3 Altitude enricher (AGPL)
+License: AGPL-3.0-or-later
+Requires-Dist: pandas
+Requires-Dist: pyyaml
+Requires-Dist: requests
