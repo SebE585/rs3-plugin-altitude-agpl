@@ -1,12 +1,12 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=68,<77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "rs3-plugin-altitude-agpl"
 version = "0.1.0"
 description = "RS3 Altitude enricher (AGPL) — ajoute altitude_m via service SRTM/IGN"
-readme = "README.md"
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
 license = { text = "AGPL-3.0-only" }
 authors = [{ name = "Sebastien Edet" }]
@@ -33,3 +33,7 @@ rs3_plugin_altitude_agpl = [
   "config/*.yaml",
   "schema_fragments/*.yaml",
 ]
+
+
+[tool.setuptools]
+license-files = []

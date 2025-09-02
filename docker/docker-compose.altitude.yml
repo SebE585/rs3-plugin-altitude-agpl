@@ -1,0 +1,14 @@
+services:
+  
+  # SRTM Enrichment Service
+  srtm-service:
+    build: ./srtm-service
+    container_name: srtm-service
+    volumes:
+      - ../data/srtm:/data/srtm
+      - ../logs/srtm:/app/logs
+    environment:
+      - MNT_PATH=/data/srtm/normandy_l93.tif
+    ports:
+      - "5004:5004"
+    restart: unless-stopped
