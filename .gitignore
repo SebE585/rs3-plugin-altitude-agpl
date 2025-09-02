@@ -7,3 +7,6 @@ build/
 .env
 .venv
 .DS_Store
+.coverage
+.pytest_cache/
+.mypy_cache/
