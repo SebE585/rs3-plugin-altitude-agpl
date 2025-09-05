@@ -3,14 +3,15 @@ import logging
 import yaml
 import pandas as pd
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from rs3_contracts.api import Result, Stage, ContextSpec  # type: ignore
 import requests
 import numpy as np
 
 log = logging.getLogger(__name__)
 
-DEFAULT_URL = os.environ.get("RS3_ALT_API_URL", "http://localhost:5004/enrich_terrain")
+DEFAULT_BASE = os.environ.get("RS3_ALTITUDE_BASE", "http://localhost:5004").rstrip("/")
+DEFAULT_URL  = os.environ.get("RS3_ALT_API_URL", f"{DEFAULT_BASE}/enrich_terrain")
 
 class AltitudePlugin:
     name = "rs3-plugin-altitude-agpl"
@@ -28,13 +29,31 @@ class AltitudePlugin:
             return df
 
         cfg = (config or {})
+        # ---- Resolve base/api URL from several possible locations (flat, nested, plugin.altitude)
         api_url = DEFAULT_URL
+        base_url = DEFAULT_BASE
         if isinstance(cfg, dict):
-            # flat form: {"api_url": "..."}
-            api_url = cfg.get("api_url", api_url)
-            # nested form: {"dataset": {"altitude": {"api_url": "..."}}}
+            # plugin-namespace first
+            alt_cfg = (cfg.get("plugins", {}) or {}).get("altitude", {}) or cfg.get("altitude", {}) or {}
+            # flat overrides
+            api_url = alt_cfg.get("api_url", cfg.get("api_url", api_url))
+            base_url = alt_cfg.get("base_url", alt_cfg.get("base", cfg.get("base_url", base_url)))
+            # legacy nested form: {"dataset": {"altitude": {"api_url": "..."}}}
             api_url = cfg.get("dataset", {}).get("altitude", {}).get("api_url", api_url)
-        timeout_s = float(cfg.get("timeout_s", 5.0))
+        # if only base_url is provided, append default path
+        if api_url == DEFAULT_URL and base_url:
+            api_url = f"{base_url.rstrip('/')}/enrich_terrain"
+
+        # ---- Resolve timeout (seconds) → tuple(connect, read)
+        t_read = float(
+            cfg.get("timeout") if isinstance(cfg, dict) and "timeout" in cfg else
+            cfg.get("timeout_s", 30.0) if isinstance(cfg, dict) else 30.0
+        )
+        t_conn = min(10.0, t_read)
+        timeout: Tuple[float, float] = (t_conn, t_read)
+
+        # tiny debug to help field diagnosis without being too verbose
+        log.info("[ALT] endpoint=%s timeout=%ss (connect=%ss, read=%ss)", api_url, t_read, t_conn, t_read)
 
         # distance_m (cumul) si absente
         if "distance_m" not in df.columns:
@@ -45,14 +64,34 @@ class AltitudePlugin:
                 # fallback simple (0..n)
                 df["distance_m"] = np.arange(len(df), dtype=float)
 
+        try:
+            sample = df[["lat","lon"]].head(1).to_dict(orient="records")[0]
+            log.debug("[ALT] payload head %s", sample)
+        except Exception:
+            pass
+
         payload = df[["lat", "lon", "distance_m"]].to_dict(orient="records")
 
         try:
-            r = requests.post(api_url, json=payload, timeout=timeout_s)
+            r = requests.post(api_url, json=payload, timeout=timeout)
+            # expose short server reply for easier schema debugging
+            if r.status_code >= 400:
+                body = (r.text or "")[:300].replace("\n", " ")
+                log.warning("[ALT] API %s → %s: %s", api_url, r.status_code, body)
             r.raise_for_status()
             data = r.json()
+        except requests.Timeout as e:
+            log.warning("[ALT] timeout API %s après %ss — altitude_m laissée vide.", api_url, t_read)
+            if "altitude_m" not in df.columns:
+                df["altitude_m"] = pd.Series([np.nan] * len(df), index=df.index, dtype="float32")
+            return df
         except requests.RequestException as e:
-            log.warning("[ALT] appel API %s en échec: %s — altitude_m laissée vide.", api_url, e)
+            body = ""
+            try:
+                body = (getattr(e.response, "text", "") or "")[:300].replace("\n", " ")
+            except Exception:
+                pass
+            log.warning("[ALT] appel API %s en échec: %s — %s — altitude_m laissée vide.", api_url, e, body)
             if "altitude_m" not in df.columns:
                 df["altitude_m"] = pd.Series([np.nan] * len(df), index=df.index, dtype="float32")
             return df
@@ -78,7 +117,7 @@ class AltitudePlugin:
             if "altitude_m" not in df.columns:
                 df["altitude_m"] = pd.Series([np.nan] * len(df), index=df.index, dtype="float32")
 
-        log.info("[ALT] altitude_m valorisée sur %d points.", int(df["altitude_m"].notna().sum()))
+        log.info("[ALT] altitude_m valorisée sur %d points (source=%s).", int(df["altitude_m"].notna().sum()), api_url)
         return df
 
 class AltitudeStage(Stage):
