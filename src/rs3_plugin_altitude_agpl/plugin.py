@@ -4,8 +4,9 @@ import yaml
 import pandas as pd
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from core2.contracts import Result  # type: ignore
-from core2.context import Context  # type: ignore
+from rs3_contracts.api import Result, Stage, ContextSpec  # type: ignore
+import requests
+import numpy as np
 
 log = logging.getLogger(__name__)
 
@@ -17,7 +18,7 @@ class AltitudePlugin:
     kind = "enricher"   # le loader l’ajoute dans la liste des enrichers
 
     def provides_schema_fragments(self) -> List[Dict[str, Any]]:
-        frag_path = Path(__file__).with_suffix("").parent / "schema_fragments" / "altitude.yaml"
+        frag_path = Path(__file__).resolve().parent / "schema_fragments" / "altitude.yaml"
         with open(frag_path, "r", encoding="utf-8") as f:
             return [yaml.safe_load(f)]
 
@@ -26,7 +27,14 @@ class AltitudePlugin:
         if df.empty or not {"lat", "lon"}.issubset(df.columns):
             return df
 
-        api_url = (config or {}).get("dataset", {}).get("altitude", {}).get("api_url", DEFAULT_URL)
+        cfg = (config or {})
+        api_url = DEFAULT_URL
+        if isinstance(cfg, dict):
+            # flat form: {"api_url": "..."}
+            api_url = cfg.get("api_url", api_url)
+            # nested form: {"dataset": {"altitude": {"api_url": "..."}}}
+            api_url = cfg.get("dataset", {}).get("altitude", {}).get("api_url", api_url)
+        timeout_s = float(cfg.get("timeout_s", 5.0))
 
         # distance_m (cumul) si absente
         if "distance_m" not in df.columns:
@@ -35,42 +43,45 @@ class AltitudePlugin:
                 df = compute_cumulative_distance(df)
             except Exception:
                 # fallback simple (0..n)
-                import numpy as np
                 df["distance_m"] = np.arange(len(df), dtype=float)
 
         payload = df[["lat", "lon", "distance_m"]].to_dict(orient="records")
 
-        import requests
         try:
-            r = requests.post(api_url, json=payload, timeout=30)
+            r = requests.post(api_url, json=payload, timeout=timeout_s)
             r.raise_for_status()
             data = r.json()
         except requests.RequestException as e:
             log.warning("[ALT] appel API %s en échec: %s — altitude_m laissée vide.", api_url, e)
-            df.setdefault("altitude_m", pd.NA)
+            if "altitude_m" not in df.columns:
+                df["altitude_m"] = pd.Series([np.nan] * len(df), index=df.index, dtype="float32")
             return df
 
         if not isinstance(data, list) or len(data) != len(df):
             log.warning("[ALT] réponse inattendue (len=%s vs %s) — altitude_m laissée vide.",
                         getattr(data, "__len__", lambda: "n/a")(), len(df))
-            df.setdefault("altitude_m", pd.NA)
+            if "altitude_m" not in df.columns:
+                df["altitude_m"] = pd.Series([np.nan] * len(df), index=df.index, dtype="float32")
             return df
 
         try:
-            df["altitude_m"] = pd.Series([pt["altitude"] for pt in data], index=df.index, dtype="float32")
+            alt = [pt.get("altitude", np.nan) for pt in data]
+            df["altitude_m"] = pd.Series(alt, index=df.index, dtype="float32")
             # (optionnel) colonnes bonus si servies
-            if "altitude_smoothed" in data[0]:
-                df["altitude_smoothed"] = pd.Series([pt["altitude_smoothed"] for pt in data], index=df.index, dtype="float32")
-            if "slope_percent" in data[0]:
-                df["slope_percent"] = pd.Series([pt["slope_percent"] for pt in data], index=df.index, dtype="float32")
+            if isinstance(data, list) and data:
+                if "altitude_smoothed" in data[0]:
+                    df["altitude_smoothed"] = pd.Series([pt.get("altitude_smoothed", np.nan) for pt in data], index=df.index, dtype="float32")
+                if "slope_percent" in data[0]:
+                    df["slope_percent"] = pd.Series([pt.get("slope_percent", np.nan) for pt in data], index=df.index, dtype="float32")
         except Exception as e:
             log.warning("[ALT] parsing JSON altitude en échec: %s", e)
-            df.setdefault("altitude_m", pd.NA)
+            if "altitude_m" not in df.columns:
+                df["altitude_m"] = pd.Series([np.nan] * len(df), index=df.index, dtype="float32")
 
         log.info("[ALT] altitude_m valorisée sur %d points.", int(df["altitude_m"].notna().sum()))
         return df
 
-class AltitudeStage:
+class AltitudeStage(Stage):
     """
     Adaptateur 'stage' pour la pipeline RS3.
     - Injecte les fragments de schéma du plugin (altitude.yaml) dans ctx.artifacts['schema_fragments'].
@@ -82,10 +93,10 @@ class AltitudeStage:
         self.config = config or {}
         self._plugin = AltitudePlugin()
 
-    def run(self, ctx: Context) -> Result:
+    def run(self, ctx: ContextSpec) -> Result:
         df = ctx.df
         if df is None or df.empty:
-            return Result(ok=False, message="df vide")
+            return Result(False, "df vide")
 
         # 1) Enregistre les fragments de schéma attendus par Exporter
         try:
@@ -114,11 +125,11 @@ class AltitudeStage:
             log.warning("[ALT] enrichissement altitude en échec: %s", e)
             # Ne pas échouer la pipeline : on laisse df intact
 
-        return Result()
+        return Result(True, "altitude stage completed (non-blocking)")
 
-def discover_stages(cfg: Optional[dict] = None) -> List[object]:
+def discover_stages(cfg: Optional[dict] = None) -> List[Stage]:
     """
-    Point d'entrée de découverte (entry point 'rs3.plugins' ou fallback d'import direct).
-    Retourne la liste des stages à insérer dans la pipeline.
+    Point d'entrée de découverte (entry point 'rs3.plugins').
+    Le loader RS3 attend une **liste d'instances de stages** possédant `.run(...)`.
     """
     return [AltitudeStage(config=cfg)]
