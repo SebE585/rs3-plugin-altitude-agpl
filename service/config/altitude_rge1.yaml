@@ -1,0 +1,17 @@
+provider: rgealti
+grid_res_m: 1
+tiles:
+  source: geotiff
+  path: /opt/data/elevation/rgealti_1m
+interpolation: bilinear
+nodata: -9999
+preprocess:
+  fill_sinks: false
+  edge_blend_m: 5
+cache:
+  enabled: true
+  max_gb: 12
+  ttl_s: 86400
+server:
+  host: 127.0.0.1
+  port: 5005

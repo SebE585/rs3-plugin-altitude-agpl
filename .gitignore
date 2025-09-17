@@ -1,12 +1,35 @@
+# Python
 __pycache__/
 *.py[cod]
+*.pyo
+*.pyd
+*.so
 *.egg-info/
 dist/
 build/
-.eggs/
-.env
-.venv
-.DS_Store
-.coverage
+
+# Tests & notebooks
 .pytest_cache/
+.ipynb_checkpoints/
+
+# Outils/linters
 .mypy_cache/
+.ruff_cache/
+.cache/
+
+# OS
+.DS_Store
+
+# Logs & artefacts d’exécution
+logs/
+*.log
+
+# Données générées par les benchs et scripts
+src/rs3_plugin_altitude_agpl/tests/data/bench_out/
+src/rs3_plugin_altitude_agpl/tests/data/*.geojson
+src/rs3_plugin_altitude_agpl/tests/data/*slopes*.csv
+src/rs3_plugin_altitude_agpl/tests/data/*summary*.csv
+
+# Docker
+*.env
+.env.*

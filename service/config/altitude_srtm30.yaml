@@ -1,0 +1,17 @@
+provider: srtm
+grid_res_m: 30
+tiles:
+  source: geotiff
+  path: /opt/data/elevation/srtm30
+interpolation: bilinear
+nodata: -32768
+preprocess:
+  fill_sinks: false
+  edge_blend_m: 5
+cache:
+  enabled: true
+  max_gb: 6
+  ttl_s: 86400
+server:
+  host: 127.0.0.1
+  port: 5004

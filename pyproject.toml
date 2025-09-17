@@ -14,6 +14,7 @@ dependencies = [
   "pandas>=2.1",
   "pyyaml>=6.0",
   "requests>=2.31",
+  "scipy>=1.10",
 ]
 
 [project.urls]
@@ -22,7 +23,7 @@ Issues = "https://github.com/SebE585/rs3-plugin-altitude-agpl/issues"
 
 # 👉 Déclaration du plugin RS3
 [project.entry-points."rs3.plugins"]
-altitude = "rs3_plugin_altitude_agpl.plugin:discover_stages"
+altitude = "rs3_plugin_altitude_agpl.plugin:AltitudeStage"
 
 
 [tool.setuptools.packages.find]
@@ -38,3 +39,11 @@ rs3_plugin_altitude_agpl = [
 
 [tool.setuptools]
 license-files = []
+
+[project.scripts]
+rs3-altitude = "rs3_plugin_altitude_agpl.factory:main"
+
+[project.optional-dependencies]
+test = [
+  "pytest>=7.0",
+]

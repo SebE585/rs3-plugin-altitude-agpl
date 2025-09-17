@@ -1,0 +1,7 @@
+altitude:
+  source: ign_then_srtm
+  ign:
+    cog_path: /data/rgealti/HauteNormandie_WGS84_COG.tif
+  srtm:
+    raster_path: /data/srtm/normandy_l93.tif
+  nodata: -9999.0

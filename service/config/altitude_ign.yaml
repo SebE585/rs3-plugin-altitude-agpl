@@ -1,0 +1,14 @@
+altitude:
+  source: ign
+  ign:
+    cog_path: /Users/sebastien.edet/projects/RoadSimulator3/data/rgealti/HauteNormandie_WGS84_COG.tif
+  nodata: -9999.0
+  pipeline:
+    sg_window_m: 21
+    sg_poly: 3
+    pre_median_3: true
+    slope_clip_pct: 15
+    slope_bw_cutoff_m: 40
+    slope_bw_order: 2
+    cache_lru_points: 10000
+    cache_round_decimals: 5

@@ -1,0 +1,4 @@
+altitude:
+  source: srtm
+  srtm:
+    raster_path: /data/srtm/normandy_l93.tif

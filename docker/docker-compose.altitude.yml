@@ -1,14 +1,21 @@
 services:
-  
-  # SRTM Enrichment Service
-  srtm-service:
-    build: ./srtm-service
-    container_name: srtm-service
-    volumes:
-      - ../data/srtm:/data/srtm
-      - ../logs/srtm:/app/logs
-    environment:
-      - MNT_PATH=/data/srtm/normandy_l93.tif
-    ports:
-      - "5004:5004"
+  altitude:
+    build:
+      context: ../service
+      dockerfile: Dockerfile
+    container_name: rs3-altitude
     restart: unless-stopped
+    command: python /app/service/app.py --config /app/service/config/altitude_compare.yaml --host 0.0.0.0 --port 5004
+    environment:
+      RS3_RGEALTI_1M_COG: /data/elevation/cog/HauteNormandie_WGS84_COG.tif
+      RS3_RGEALTI_5M_COG: /data/elevation/cog/dem_5m_cog.tif
+      RS3_SRTM30_COG:     /data/elevation/cog/srtm30_normandie_cog.tif
+      RS3_SRTM90_COG:     /data/elevation/cog/srtm90_normandie_cog.tif
+    ports:
+      - target: 5004
+        published: 5004
+        protocol: tcp
+        mode: host
+    volumes:
+      - ../service:/app/service:ro
+      - ${HOME}/rs3-data/elevation:/data/elevation:ro

@@ -1,0 +1,15 @@
+- name: altitude_m
+  dtype: float32
+  unit: m
+  nullable: true
+  description: "Orthometric altitude (SRTM/IGN). Peut être null si fournisseur absent."
+- name: altitude_smoothed
+  dtype: float32
+  unit: m
+  nullable: true
+  description: "Altitude lissée via filtre SRTM/IGN."
+- name: slope_percent
+  dtype: float32
+  unit: "%"
+  nullable: true
+  description: "Pente locale calculée à partir du profil d'altitude."

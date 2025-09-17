@@ -1,6 +1,8 @@
 flask
-pandas
 rasterio
+pandas
 pyproj
+numpy
 scipy
+pyyaml
 geopy
